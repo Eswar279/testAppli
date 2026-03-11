@@ -1,0 +1,38 @@
+# Template for deploying a Node.js app to Azure Web App
+
+parameters:
+  - name: appName
+    type: string
+  - name: resourceGroup
+    type: string
+
+trigger: none
+
+jobs:
+  - job: Deploy
+    displayName: Deploy $(parameters.appName)
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '16.x'
+      - script: |
+          npm install
+          npm run build  # if applicable
+        workingDirectory: $(Build.SourcesDirectory)
+      - task: ArchiveFiles@2
+        inputs:
+          rootFolderOrFile: '$(Build.SourcesDirectory)'
+          includeRootFolder: false
+          archiveType: 'zip'
+          archiveFile: '$(Build.ArtifactStagingDirectory)/$(parameters.appName).zip'
+      - publish: $(Build.ArtifactStagingDirectory)/$(parameters.appName).zip
+        artifact: drop
+      - task: AzureWebApp@1
+        inputs:
+          azureSubscription: '$(azureServiceConnection)'
+          appType: 'webApp'
+          appName: '$(parameters.appName)'
+          resourceGroupName: '$(parameters.resourceGroup)'
+          package: '$(Build.ArtifactStagingDirectory)/$(parameters.appName).zip'
